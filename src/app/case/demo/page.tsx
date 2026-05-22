@@ -4,7 +4,12 @@ import { useState } from "react";
 
 export default function DemoCasePage() {
   const [initialSubmitted, setInitialSubmitted] = useState(false);
-  const assignedArm = "llm_rag";
+  const [finalSubmitted, setFinalSubmitted] = useState(false);
+
+  const [assignedArm] = useState<"control" | "llm" | "llm_rag">(() => {
+  const arms = ["control", "llm", "llm_rag"] as const;
+  return arms[Math.floor(Math.random() * arms.length)];
+});
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -14,7 +19,13 @@ export default function DemoCasePage() {
             <p className="text-sm font-medium text-cyan-300">
               RAG-Dx Study Platform
             </p>
+
             <h1 className="text-xl font-bold">Demo Case IM-001</h1>
+            <p className="mt-1 text-xs text-slate-400">
+             Demo assignment arm:{" "}
+            <span className="font-semibold text-cyan-300">{assignedArm}</span>
+           </p>
+
           </div>
 
           <a
@@ -234,9 +245,23 @@ export default function DemoCasePage() {
                 className="rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-400"
               />
 
-              <button className="rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300">
-                Submit final answer
+              <button
+             type="button"
+             onClick={() => setFinalSubmitted(true)}
+             disabled={!initialSubmitted}
+              className="rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300"
+              >
+              {finalSubmitted ? "Final answer submitted" : "Submit final answer"}
               </button>
+               
+                 {finalSubmitted && (
+                 <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-sm text-emerald-200">
+                   Demo case completed. In the real platform, this would save the final
+                   response and return the reader to the dashboard.
+                 </div>
+                  )}
+
+
             </div>
           </div>
         </section>
