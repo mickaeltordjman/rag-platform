@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RAG-Dx Study Platform
 
-## Getting Started
+A working Next.js MVP for an international physician diagnostic-reasoning study.
 
-First, run the development server:
+## Study workflow
+
+1. Every reader reviews each case without AI.
+2. The reader submits a main diagnosis, up to three differentials, and confidence from 0–100.
+3. That baseline answer is locked.
+4. The reader-case interaction is assigned to GPT alone or GPT + OpenScholar.
+5. The reader interacts with the assigned assistant and submits the same diagnostic assessment again.
+
+## Run locally
 
 ```bash
+npm install
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The app works without API keys using a clearly labeled demo AI response. To use a live OpenAI model, configure `OPENAI_API_KEY` and the exact approved API model identifier in `OPENAI_MODEL`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## OpenScholar adapter
 
-## Learn More
+The prototype expects:
 
-To learn more about Next.js, take a look at the following resources:
+```text
+POST OPENSCHOLAR_API_URL
+Authorization: Bearer <optional key>
+Content-Type: application/json
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+{ "query": "..." }
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Response:
 
-## Deploy on Vercel
+```json
+{
+  "documents": [
+    { "title": "Article title", "passage": "Retrieved passage", "url": "https://..." }
+  ]
+}
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Adapt `src/app/api/chat/route.ts` when the actual Discovery/OpenScholar contract is available.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## What is working
+
+- Reader registration and consent capture
+- Reader dashboard and case progress
+- Universal unaided baseline assessment
+- Required 0–100 confidence selection
+- Baseline answer locking
+- Stable reader-case assignment to GPT or GPT + OpenScholar
+- AI chat with demo fallback or live OpenAI Responses API
+- Post-AI assessment and case completion
+- Browser persistence across refreshes
+- Separation of automatic case content and manual physician prompts in the AI request
+
+## Production limitations
+
+This is a functional UI and workflow MVP, not yet a research-production deployment. Data are stored in browser `localStorage`; authentication, a server database, invitation management, auditable server-side randomization, encrypted exports, centralized event logging, and institutional hosting review are still required before enrolling real study participants.
