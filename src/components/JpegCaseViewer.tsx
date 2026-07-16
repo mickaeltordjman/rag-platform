@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 type CaseSequenceSummary = {
   id: string;
@@ -37,27 +42,36 @@ type JpegCaseViewerProps = {
 export default function JpegCaseViewer({
   caseCode,
 }: JpegCaseViewerProps) {
-  const [studyCase, setStudyCase] = useState<CasePayload | null>(
-    null,
-  );
+  const [studyCase, setStudyCase] =
+    useState<CasePayload | null>(null);
 
-  const [activeSequenceId, setActiveSequenceId] = useState<
-    string | null
-  >(null);
+  const [activeSequenceId, setActiveSequenceId] =
+    useState<string | null>(null);
 
-  const [loadedSequences, setLoadedSequences] = useState<
-    Record<string, LoadedSequence>
-  >({});
+  const [loadedSequences, setLoadedSequences] =
+    useState<Record<string, LoadedSequence>>({});
 
-  const [imageIndexBySequence, setImageIndexBySequence] =
-    useState<Record<string, number>>({});
+  const [
+    imageIndexBySequence,
+    setImageIndexBySequence,
+  ] = useState<Record<string, number>>({});
 
   const [zoom, setZoom] = useState(1);
-  const [loadingCase, setLoadingCase] = useState(true);
-  const [loadingSequenceId, setLoadingSequenceId] = useState<
-    string | null
-  >(null);
+  const [sidebarOpen, setSidebarOpen] =
+    useState(true);
+
+  const [loadingCase, setLoadingCase] =
+    useState(true);
+
+  const [
+    loadingSequenceId,
+    setLoadingSequenceId,
+  ] = useState<string | null>(null);
+
   const [error, setError] = useState("");
+
+  const activeThumbnailRef =
+    useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -71,9 +85,12 @@ export default function JpegCaseViewer({
         setLoadedSequences({});
         setImageIndexBySequence({});
         setZoom(1);
+        setSidebarOpen(true);
 
         const response = await fetch(
-          `/api/cases/${encodeURIComponent(caseCode)}`,
+          `/api/cases/${encodeURIComponent(
+            caseCode,
+          )}`,
           {
             cache: "no-store",
           },
@@ -95,11 +112,14 @@ export default function JpegCaseViewer({
           return;
         }
 
-        const casePayload = payload as CasePayload;
+        const casePayload =
+          payload as CasePayload;
 
         setStudyCase(casePayload);
+
         setActiveSequenceId(
-          casePayload.sequences[0]?.id ?? null,
+          casePayload.sequences[0]?.id ??
+            null,
         );
       } catch (loadError) {
         if (!active) {
@@ -130,34 +150,45 @@ export default function JpegCaseViewer({
       return;
     }
 
-    if (loadedSequences[activeSequenceId]) {
+    if (
+      loadedSequences[activeSequenceId]
+    ) {
       return;
     }
 
-    const sequenceId = activeSequenceId;
+    const sequenceId =
+      activeSequenceId;
+
     let active = true;
 
     async function loadSequence() {
       try {
-        setLoadingSequenceId(sequenceId);
+        setLoadingSequenceId(
+          sequenceId,
+        );
+
         setError("");
 
         const response = await fetch(
           `/api/cases/${encodeURIComponent(
             caseCode,
-          )}/sequences/${encodeURIComponent(sequenceId)}`,
+          )}/sequences/${encodeURIComponent(
+            sequenceId,
+          )}`,
           {
             cache: "no-store",
           },
         );
 
-        const payload = (await response.json()) as
-          | LoadedSequence
-          | { error?: string };
+        const payload =
+          (await response.json()) as
+            | LoadedSequence
+            | { error?: string };
 
         if (!response.ok) {
           throw new Error(
-            "error" in payload && payload.error
+            "error" in payload &&
+              payload.error
               ? payload.error
               : "Unable to load sequence.",
           );
@@ -167,10 +198,21 @@ export default function JpegCaseViewer({
           return;
         }
 
-        setLoadedSequences((current) => ({
-          ...current,
-          [sequenceId]: payload as LoadedSequence,
-        }));
+        setLoadedSequences(
+          (current) => ({
+            ...current,
+            [sequenceId]:
+              payload as LoadedSequence,
+          }),
+        );
+
+        setImageIndexBySequence(
+          (current) => ({
+            ...current,
+            [sequenceId]:
+              current[sequenceId] ?? 0,
+          }),
+        );
       } catch (loadError) {
         if (!active) {
           return;
@@ -193,40 +235,80 @@ export default function JpegCaseViewer({
     return () => {
       active = false;
     };
-  }, [activeSequenceId, caseCode, loadedSequences]);
+  }, [
+    activeSequenceId,
+    caseCode,
+    loadedSequences,
+  ]);
 
-  const activeSummary = useMemo(() => {
-    return (
+  const activeSummary = useMemo(
+    () =>
       studyCase?.sequences.find(
-        (sequence) => sequence.id === activeSequenceId,
-      ) ?? null
-    );
-  }, [activeSequenceId, studyCase]);
+        (sequence) =>
+          sequence.id ===
+          activeSequenceId,
+      ) ?? null,
+    [activeSequenceId, studyCase],
+  );
 
-  const activeSequence = activeSequenceId
-    ? loadedSequences[activeSequenceId] ?? null
-    : null;
+  const activeSequence =
+    activeSequenceId
+      ? loadedSequences[
+          activeSequenceId
+        ] ?? null
+      : null;
 
-  const currentIndex = activeSequence
-    ? imageIndexBySequence[activeSequence.id] ?? 0
-    : 0;
+  const currentIndex =
+    activeSequence
+      ? imageIndexBySequence[
+          activeSequence.id
+        ] ?? 0
+      : 0;
 
   const currentImage =
-    activeSequence?.images[currentIndex] ?? null;
+    activeSequence?.images[
+      currentIndex
+    ] ?? null;
 
   const isLoadingActiveSequence =
     activeSequenceId !== null &&
-    loadingSequenceId === activeSequenceId;
+    loadingSequenceId ===
+      activeSequenceId;
 
-  function setCurrentIndex(nextIndex: number) {
+  useEffect(() => {
+    activeThumbnailRef.current?.scrollIntoView(
+      {
+        behavior: "smooth",
+        block: "nearest",
+      },
+    );
+  }, [
+    activeSequenceId,
+    currentIndex,
+  ]);
+
+  function setCurrentIndex(
+    nextIndex: number,
+  ) {
     if (!activeSequence) {
       return;
     }
 
-    setImageIndexBySequence((current) => ({
-      ...current,
-      [activeSequence.id]: nextIndex,
-    }));
+    const lastIndex =
+      activeSequence.images.length - 1;
+
+    const safeIndex = Math.min(
+      Math.max(nextIndex, 0),
+      Math.max(lastIndex, 0),
+    );
+
+    setImageIndexBySequence(
+      (current) => ({
+        ...current,
+        [activeSequence.id]:
+          safeIndex,
+      }),
+    );
   }
 
   function previousImage() {
@@ -239,7 +321,8 @@ export default function JpegCaseViewer({
 
     const nextIndex =
       currentIndex === 0
-        ? activeSequence.images.length - 1
+        ? activeSequence.images.length -
+          1
         : currentIndex - 1;
 
     setCurrentIndex(nextIndex);
@@ -254,17 +337,30 @@ export default function JpegCaseViewer({
     }
 
     const nextIndex =
-      currentIndex === activeSequence.images.length - 1
+      currentIndex ===
+      activeSequence.images.length - 1
         ? 0
         : currentIndex + 1;
 
     setCurrentIndex(nextIndex);
   }
 
-  function selectSequence(sequenceId: string) {
-    setActiveSequenceId(sequenceId);
+  function selectSequence(
+    sequenceId: string,
+  ) {
+    setActiveSequenceId(
+      sequenceId,
+    );
+
     setZoom(1);
     setError("");
+  }
+
+  function selectImage(
+    imageIndex: number,
+  ) {
+    setCurrentIndex(imageIndex);
+    setZoom(1);
   }
 
   if (loadingCase) {
@@ -283,67 +379,62 @@ export default function JpegCaseViewer({
     );
   }
 
-  if (!studyCase || studyCase.sequences.length === 0) {
+  if (
+    !studyCase ||
+    studyCase.sequences.length === 0
+  ) {
     return (
       <div className="flex min-h-[650px] items-center justify-center rounded-xl bg-black text-white">
-        No image sequences are configured.
+        No image sequences are
+        configured.
       </div>
     );
   }
 
   return (
     <section className="overflow-hidden rounded-xl border border-slate-700 bg-black">
-      <div className="flex flex-wrap gap-2 border-b border-slate-700 bg-slate-900 p-3">
-        {studyCase.sequences.map((sequence) => {
-          const isActive =
-            sequence.id === activeSequenceId;
-
-          const isLoaded = Boolean(
-            loadedSequences[sequence.id],
-          );
-
-          const isLoading =
-            loadingSequenceId === sequence.id;
-
-          return (
-            <button
-              key={sequence.id}
-              type="button"
-              onClick={() => selectSequence(sequence.id)}
-              className={
-                isActive
-                  ? "rounded bg-cyan-500 px-3 py-2 text-sm font-medium text-slate-950"
-                  : "rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600"
-              }
-            >
-              {sequence.name} ({sequence.imageCount})
-              {isLoading
-                ? " · loading"
-                : isLoaded
-                  ? " · loaded"
-                  : ""}
-            </button>
-          );
-        })}
-      </div>
-
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 bg-slate-950 px-4 py-3 text-white">
-        <div>
-          <p className="font-semibold">
-            {studyCase.caseCode}
-          </p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() =>
+              setSidebarOpen(
+                (current) => !current,
+              )
+            }
+            className="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600"
+            aria-label={
+              sidebarOpen
+                ? "Hide image sidebar"
+                : "Show image sidebar"
+            }
+          >
+            {sidebarOpen
+              ? "Hide images"
+              : "Show images"}
+          </button>
 
-          <p className="text-sm text-slate-400">
-            {activeSummary?.name ?? "Sequence"}
+          <div>
+            <p className="font-semibold">
+              {studyCase.caseCode}
+            </p>
 
-            {activeSequence
-              ? ` — image ${currentIndex + 1} of ${
-                  activeSequence.images.length
-                }`
-              : activeSummary
-                ? ` — ${activeSummary.imageCount} images`
-                : ""}
-          </p>
+            <p className="text-sm text-slate-400">
+              {activeSummary?.name ??
+                "Sequence"}
+
+              {activeSequence
+                ? ` — image ${
+                    currentIndex + 1
+                  } of ${
+                    activeSequence.images
+                      .length
+                  }`
+                : activeSummary
+                  ? ` — ${activeSummary.imageCount} images`
+                  : ""}
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -369,7 +460,10 @@ export default function JpegCaseViewer({
             type="button"
             onClick={() =>
               setZoom((value) =>
-                Math.min(value + 0.25, 4),
+                Math.min(
+                  value + 0.25,
+                  4,
+                ),
               )
             }
             disabled={!activeSequence}
@@ -382,7 +476,10 @@ export default function JpegCaseViewer({
             type="button"
             onClick={() =>
               setZoom((value) =>
-                Math.max(value - 0.25, 0.5),
+                Math.max(
+                  value - 0.25,
+                  0.5,
+                ),
               )
             }
             disabled={!activeSequence}
@@ -393,7 +490,9 @@ export default function JpegCaseViewer({
 
           <button
             type="button"
-            onClick={() => setZoom(1)}
+            onClick={() =>
+              setZoom(1)
+            }
             disabled={!activeSequence}
             className="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -402,55 +501,241 @@ export default function JpegCaseViewer({
         </div>
       </header>
 
-      <div
-        className="flex min-h-[650px] items-center justify-center overflow-auto p-4"
-        onWheel={(event) => {
-          if (!activeSequence) {
-            return;
-          }
+      <div className="flex min-h-[650px]">
+        {sidebarOpen ? (
+          <aside className="flex w-52 shrink-0 flex-col border-r border-slate-700 bg-slate-950 text-white sm:w-60">
+            <div className="border-b border-slate-700 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Sequences
+              </p>
 
-          event.preventDefault();
+              <div className="mt-3 grid gap-2">
+                {studyCase.sequences.map(
+                  (sequence) => {
+                    const isActive =
+                      sequence.id ===
+                      activeSequenceId;
 
-          if (event.deltaY > 0) {
-            nextImage();
-          } else if (event.deltaY < 0) {
-            previousImage();
-          }
-        }}
-      >
-        {isLoadingActiveSequence ? (
-          <div className="text-center text-white">
-            <p className="font-medium">
-              Loading {activeSummary?.name ?? "sequence"}…
+                    const isLoaded =
+                      Boolean(
+                        loadedSequences[
+                          sequence.id
+                        ],
+                      );
+
+                    const isLoading =
+                      loadingSequenceId ===
+                      sequence.id;
+
+                    return (
+                      <button
+                        key={
+                          sequence.id
+                        }
+                        type="button"
+                        onClick={() =>
+                          selectSequence(
+                            sequence.id,
+                          )
+                        }
+                        className={
+                          isActive
+                            ? "rounded-lg border border-cyan-400 bg-cyan-400/15 px-3 py-2 text-left text-sm text-cyan-100"
+                            : "rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
+                        }
+                      >
+                        <span className="block font-medium">
+                          {
+                            sequence.name
+                          }
+                        </span>
+
+                        <span className="mt-1 block text-xs text-slate-400">
+                          {
+                            sequence.imageCount
+                          }{" "}
+                          images
+                          {isLoading
+                            ? " · loading"
+                            : isLoaded
+                              ? " · loaded"
+                              : ""}
+                        </span>
+                      </button>
+                    );
+                  },
+                )}
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-3">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Images
+                </p>
+
+                {activeSequence ? (
+                  <span className="text-xs text-slate-500">
+                    {currentIndex + 1}/
+                    {
+                      activeSequence
+                        .images.length
+                    }
+                  </span>
+                ) : null}
+              </div>
+
+              {isLoadingActiveSequence ? (
+                <p className="text-sm text-slate-400">
+                  Loading thumbnails…
+                </p>
+              ) : activeSequence ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {activeSequence.images.map(
+                    (
+                      image,
+                      imageIndex,
+                    ) => {
+                      const isActive =
+                        imageIndex ===
+                        currentIndex;
+
+                      return (
+                        <button
+                          key={
+                            image.path
+                          }
+                          ref={
+                            isActive
+                              ? activeThumbnailRef
+                              : null
+                          }
+                          type="button"
+                          onClick={() =>
+                            selectImage(
+                              imageIndex,
+                            )
+                          }
+                          className={
+                            isActive
+                              ? "overflow-hidden rounded-lg border-2 border-cyan-400 bg-slate-800"
+                              : "overflow-hidden rounded-lg border border-white/10 bg-slate-900 hover:border-slate-500"
+                          }
+                          aria-label={`Open image ${
+                            imageIndex + 1
+                          }`}
+                        >
+                          <div className="aspect-square bg-black">
+                            <img
+                              src={
+                                image.signedUrl
+                              }
+                              alt={`Thumbnail ${
+                                imageIndex + 1
+                              }`}
+                              loading="lazy"
+                              draggable={
+                                false
+                              }
+                              className="h-full w-full object-contain"
+                            />
+                          </div>
+
+                          <div
+                            className={
+                              isActive
+                                ? "bg-cyan-400 px-2 py-1 text-center text-xs font-semibold text-slate-950"
+                                : "bg-slate-900 px-2 py-1 text-center text-xs text-slate-400"
+                            }
+                          >
+                            {imageIndex +
+                              1}
+                          </div>
+                        </button>
+                      );
+                    },
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  Select a sequence to
+                  view its images.
+                </p>
+              )}
+            </div>
+          </aside>
+        ) : null}
+
+        <div
+          className="flex min-w-0 flex-1 items-center justify-center overflow-auto p-4"
+          onWheel={(event) => {
+            if (!activeSequence) {
+              return;
+            }
+
+            event.preventDefault();
+
+            if (event.deltaY > 0) {
+              nextImage();
+            } else if (
+              event.deltaY < 0
+            ) {
+              previousImage();
+            }
+          }}
+        >
+          {isLoadingActiveSequence ? (
+            <div className="text-center text-white">
+              <p className="font-medium">
+                Loading{" "}
+                {activeSummary?.name ??
+                  "sequence"}
+                …
+              </p>
+
+              <p className="mt-2 text-sm text-slate-400">
+                Preparing secure image
+                links.
+              </p>
+            </div>
+          ) : currentImage ? (
+            <img
+              src={
+                currentImage.signedUrl
+              }
+              alt={`${studyCase.caseCode}, ${
+                activeSummary?.name ??
+                "sequence"
+              }, image ${
+                currentIndex + 1
+              }`}
+              draggable={false}
+              className="max-h-[78vh] max-w-full select-none object-contain"
+              style={{
+                transform: `scale(${zoom})`,
+                transformOrigin:
+                  "center",
+              }}
+            />
+          ) : (
+            <p className="text-red-300">
+              {error ||
+                "Unable to display this sequence."}
             </p>
-
-            <p className="mt-2 text-sm text-slate-400">
-              Preparing secure image links.
-            </p>
-          </div>
-        ) : currentImage ? (
-          <img
-            src={currentImage.signedUrl}
-            alt={`${studyCase.caseCode}, ${
-              activeSummary?.name ?? "sequence"
-            }, image ${currentIndex + 1}`}
-            draggable={false}
-            className="max-h-[78vh] max-w-full select-none object-contain"
-            style={{
-              transform: `scale(${zoom})`,
-              transformOrigin: "center",
-            }}
-          />
-        ) : (
-          <p className="text-red-300">
-            {error || "Unable to display this sequence."}
-          </p>
-        )}
+          )}
+        </div>
       </div>
 
-      <footer className="border-t border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-300">
-        Use the mouse wheel to scroll through the active
-        sequence.
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-300">
+        <span>
+          Use the mouse wheel to move
+          through the active sequence.
+        </span>
+
+        <span>
+          Zoom:{" "}
+          {Math.round(zoom * 100)}%
+        </span>
       </footer>
     </section>
   );
