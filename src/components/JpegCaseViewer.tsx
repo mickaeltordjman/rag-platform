@@ -37,11 +37,13 @@ type JpegCaseViewerProps = {
 export default function JpegCaseViewer({
   caseCode,
 }: JpegCaseViewerProps) {
-  const [studyCase, setStudyCase] =
-    useState<CasePayload | null>(null);
+  const [studyCase, setStudyCase] = useState<CasePayload | null>(
+    null,
+  );
 
-  const [activeSequenceId, setActiveSequenceId] =
-    useState<string | null>(null);
+  const [activeSequenceId, setActiveSequenceId] = useState<
+    string | null
+  >(null);
 
   const [loadedSequences, setLoadedSequences] = useState<
     Record<string, LoadedSequence>
@@ -52,7 +54,9 @@ export default function JpegCaseViewer({
 
   const [zoom, setZoom] = useState(1);
   const [loadingCase, setLoadingCase] = useState(true);
-  const [loadingSequence, setLoadingSequence] = useState(false);
+  const [loadingSequenceId, setLoadingSequenceId] = useState<
+    string | null
+  >(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -62,36 +66,51 @@ export default function JpegCaseViewer({
       try {
         setLoadingCase(true);
         setError("");
+        setStudyCase(null);
+        setActiveSequenceId(null);
+        setLoadedSequences({});
+        setImageIndexBySequence({});
+        setZoom(1);
 
         const response = await fetch(
           `/api/cases/${encodeURIComponent(caseCode)}`,
-          { cache: "no-store" },
+          {
+            cache: "no-store",
+          },
         );
 
-        const payload = await response.json();
+        const payload = (await response.json()) as
+          | CasePayload
+          | { error?: string };
 
         if (!response.ok) {
           throw new Error(
-            payload.error ?? "Unable to load case.",
-          );
-        }
-
-        if (!active) return;
-
-        setStudyCase(payload);
-
-        const firstSequenceId =
-          payload.sequences?.[0]?.id ?? null;
-
-        setActiveSequenceId(firstSequenceId);
-      } catch (loadError) {
-        if (active) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
+            "error" in payload && payload.error
+              ? payload.error
               : "Unable to load case.",
           );
         }
+
+        if (!active) {
+          return;
+        }
+
+        const casePayload = payload as CasePayload;
+
+        setStudyCase(casePayload);
+        setActiveSequenceId(
+          casePayload.sequences[0]?.id ?? null,
+        );
+      } catch (loadError) {
+        if (!active) {
+          return;
+        }
+
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Unable to load case.",
+        );
       } finally {
         if (active) {
           setLoadingCase(false);
@@ -107,50 +126,64 @@ export default function JpegCaseViewer({
   }, [caseCode]);
 
   useEffect(() => {
-    if (!activeSequenceId) return;
-    if (loadedSequences[activeSequenceId]) return;
+    if (!activeSequenceId) {
+      return;
+    }
 
+    if (loadedSequences[activeSequenceId]) {
+      return;
+    }
+
+    const sequenceId = activeSequenceId;
     let active = true;
 
     async function loadSequence() {
       try {
-        setLoadingSequence(true);
+        setLoadingSequenceId(sequenceId);
         setError("");
 
         const response = await fetch(
           `/api/cases/${encodeURIComponent(
             caseCode,
-          )}/sequences/${encodeURIComponent(
-            activeSequenceId,
-          )}`,
-          { cache: "no-store" },
+          )}/sequences/${encodeURIComponent(sequenceId)}`,
+          {
+            cache: "no-store",
+          },
         );
 
-        const payload = await response.json();
+        const payload = (await response.json()) as
+          | LoadedSequence
+          | { error?: string };
 
         if (!response.ok) {
           throw new Error(
-            payload.error ?? "Unable to load sequence.",
-          );
-        }
-
-        if (!active) return;
-
-        setLoadedSequences((current) => ({
-          ...current,
-          [activeSequenceId]: payload,
-        }));
-      } catch (loadError) {
-        if (active) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
+            "error" in payload && payload.error
+              ? payload.error
               : "Unable to load sequence.",
           );
         }
+
+        if (!active) {
+          return;
+        }
+
+        setLoadedSequences((current) => ({
+          ...current,
+          [sequenceId]: payload as LoadedSequence,
+        }));
+      } catch (loadError) {
+        if (!active) {
+          return;
+        }
+
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Unable to load sequence.",
+        );
       } finally {
         if (active) {
-          setLoadingSequence(false);
+          setLoadingSequenceId(null);
         }
       }
     }
@@ -161,6 +194,14 @@ export default function JpegCaseViewer({
       active = false;
     };
   }, [activeSequenceId, caseCode, loadedSequences]);
+
+  const activeSummary = useMemo(() => {
+    return (
+      studyCase?.sequences.find(
+        (sequence) => sequence.id === activeSequenceId,
+      ) ?? null
+    );
+  }, [activeSequenceId, studyCase]);
 
   const activeSequence = activeSequenceId
     ? loadedSequences[activeSequenceId] ?? null
@@ -173,16 +214,14 @@ export default function JpegCaseViewer({
   const currentImage =
     activeSequence?.images[currentIndex] ?? null;
 
-  const activeSummary = useMemo(
-    () =>
-      studyCase?.sequences.find(
-        (sequence) => sequence.id === activeSequenceId,
-      ) ?? null,
-    [activeSequenceId, studyCase],
-  );
+  const isLoadingActiveSequence =
+    activeSequenceId !== null &&
+    loadingSequenceId === activeSequenceId;
 
   function setCurrentIndex(nextIndex: number) {
-    if (!activeSequence) return;
+    if (!activeSequence) {
+      return;
+    }
 
     setImageIndexBySequence((current) => ({
       ...current,
@@ -191,27 +230,41 @@ export default function JpegCaseViewer({
   }
 
   function previousImage() {
-    if (!activeSequence || activeSequence.images.length === 0) {
+    if (
+      !activeSequence ||
+      activeSequence.images.length === 0
+    ) {
       return;
     }
 
-    setCurrentIndex(
+    const nextIndex =
       currentIndex === 0
         ? activeSequence.images.length - 1
-        : currentIndex - 1,
-    );
+        : currentIndex - 1;
+
+    setCurrentIndex(nextIndex);
   }
 
   function nextImage() {
-    if (!activeSequence || activeSequence.images.length === 0) {
+    if (
+      !activeSequence ||
+      activeSequence.images.length === 0
+    ) {
       return;
     }
 
-    setCurrentIndex(
+    const nextIndex =
       currentIndex === activeSequence.images.length - 1
         ? 0
-        : currentIndex + 1,
-    );
+        : currentIndex + 1;
+
+    setCurrentIndex(nextIndex);
+  }
+
+  function selectSequence(sequenceId: string) {
+    setActiveSequenceId(sequenceId);
+    setZoom(1);
+    setError("");
   }
 
   if (loadingCase) {
@@ -241,35 +294,55 @@ export default function JpegCaseViewer({
   return (
     <section className="overflow-hidden rounded-xl border border-slate-700 bg-black">
       <div className="flex flex-wrap gap-2 border-b border-slate-700 bg-slate-900 p-3">
-        {studyCase.sequences.map((sequence) => (
-          <button
-            key={sequence.id}
-            type="button"
-            onClick={() => {
-              setActiveSequenceId(sequence.id);
-              setZoom(1);
-            }}
-            className={
-              sequence.id === activeSequenceId
-                ? "rounded bg-cyan-500 px-3 py-2 text-sm font-medium text-slate-950"
-                : "rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600"
-            }
-          >
-            {sequence.name} ({sequence.imageCount})
-          </button>
-        ))}
+        {studyCase.sequences.map((sequence) => {
+          const isActive =
+            sequence.id === activeSequenceId;
+
+          const isLoaded = Boolean(
+            loadedSequences[sequence.id],
+          );
+
+          const isLoading =
+            loadingSequenceId === sequence.id;
+
+          return (
+            <button
+              key={sequence.id}
+              type="button"
+              onClick={() => selectSequence(sequence.id)}
+              className={
+                isActive
+                  ? "rounded bg-cyan-500 px-3 py-2 text-sm font-medium text-slate-950"
+                  : "rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600"
+              }
+            >
+              {sequence.name} ({sequence.imageCount})
+              {isLoading
+                ? " · loading"
+                : isLoaded
+                  ? " · loaded"
+                  : ""}
+            </button>
+          );
+        })}
       </div>
 
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 bg-slate-950 px-4 py-3 text-white">
         <div>
-          <p className="font-semibold">{studyCase.caseCode}</p>
+          <p className="font-semibold">
+            {studyCase.caseCode}
+          </p>
+
           <p className="text-sm text-slate-400">
             {activeSummary?.name ?? "Sequence"}
+
             {activeSequence
               ? ` — image ${currentIndex + 1} of ${
                   activeSequence.images.length
                 }`
-              : ""}
+              : activeSummary
+                ? ` — ${activeSummary.imageCount} images`
+                : ""}
           </p>
         </div>
 
@@ -278,7 +351,7 @@ export default function JpegCaseViewer({
             type="button"
             onClick={previousImage}
             disabled={!activeSequence}
-            className="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 disabled:opacity-40"
+            className="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Previous
           </button>
@@ -287,7 +360,7 @@ export default function JpegCaseViewer({
             type="button"
             onClick={nextImage}
             disabled={!activeSequence}
-            className="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 disabled:opacity-40"
+            className="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Next
           </button>
@@ -295,10 +368,12 @@ export default function JpegCaseViewer({
           <button
             type="button"
             onClick={() =>
-              setZoom((value) => Math.min(value + 0.25, 4))
+              setZoom((value) =>
+                Math.min(value + 0.25, 4),
+              )
             }
             disabled={!activeSequence}
-            className="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 disabled:opacity-40"
+            className="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Zoom +
           </button>
@@ -306,10 +381,12 @@ export default function JpegCaseViewer({
           <button
             type="button"
             onClick={() =>
-              setZoom((value) => Math.max(value - 0.25, 0.5))
+              setZoom((value) =>
+                Math.max(value - 0.25, 0.5),
+              )
             }
             disabled={!activeSequence}
-            className="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 disabled:opacity-40"
+            className="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Zoom −
           </button>
@@ -317,7 +394,8 @@ export default function JpegCaseViewer({
           <button
             type="button"
             onClick={() => setZoom(1)}
-            className="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600"
+            disabled={!activeSequence}
+            className="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Reset
           </button>
@@ -327,17 +405,29 @@ export default function JpegCaseViewer({
       <div
         className="flex min-h-[650px] items-center justify-center overflow-auto p-4"
         onWheel={(event) => {
-          if (!activeSequence) return;
+          if (!activeSequence) {
+            return;
+          }
+
+          event.preventDefault();
 
           if (event.deltaY > 0) {
             nextImage();
-          } else {
+          } else if (event.deltaY < 0) {
             previousImage();
           }
         }}
       >
-        {loadingSequence ? (
-          <p className="text-white">Loading sequence…</p>
+        {isLoadingActiveSequence ? (
+          <div className="text-center text-white">
+            <p className="font-medium">
+              Loading {activeSummary?.name ?? "sequence"}…
+            </p>
+
+            <p className="mt-2 text-sm text-slate-400">
+              Preparing secure image links.
+            </p>
+          </div>
         ) : currentImage ? (
           <img
             src={currentImage.signedUrl}
@@ -357,6 +447,11 @@ export default function JpegCaseViewer({
           </p>
         )}
       </div>
+
+      <footer className="border-t border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-300">
+        Use the mouse wheel to scroll through the active
+        sequence.
+      </footer>
     </section>
   );
 }
