@@ -32,6 +32,11 @@ export async function POST(request: Request) {
   const prompt = `AUTOMATIC CASE CONTENT:\n${body.caseText}\n\n${retrievedEvidence ? `RETRIEVED EVIDENCE:\n${retrievedEvidence}\n\n` : ""}PHYSICIAN-WRITTEN PROMPT:\n${body.message}`;
   const openAiResponse = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ model, reasoning: { effort: process.env.OPENAI_REASONING_EFFORT || "medium" }, input: [{ role: "system", content: system }, ...(body.history || []).slice(-8).map((item) => ({ role: item.role, content: item.content })), { role: "user", content: prompt }] }), cache: "no-store" });
   const data = await openAiResponse.json();
+  
+  console.log("Requested model:", model);
+  console.log("Returned model:", data.model);
+  console.log("OpenAI response ID:", data.id);
+  
   if (!openAiResponse.ok) return NextResponse.json({ error: data.error?.message || "OpenAI request failed." }, { status: openAiResponse.status });
   const text = data.output_text || data.output?.flatMap((item: { content?: Array<{ text?: string }> }) => item.content || []).map((item: { text?: string }) => item.text || "").join("\n") || "No response text returned.";
   return NextResponse.json({ text, sources });
