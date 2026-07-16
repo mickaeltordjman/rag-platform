@@ -118,14 +118,7 @@ export async function POST(request: Request) {
     } = await supabaseAdmin
       .from("assignments")
       .select(
-        [
-          "id",
-          "status",
-          "opened_at",
-          "baseline_submitted_at",
-          "ai_unlocked_at",
-          "final_submitted_at",
-        ].join(", "),
+      "id, status, opened_at, baseline_submitted_at, ai_unlocked_at, final_submitted_at",
       )
       .eq("id", assignmentId)
       .single();
@@ -145,8 +138,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const assignment =
-      assignmentData as AssignmentRow;
+     const assignment: AssignmentRow = {
+       id: assignmentData.id,
+       status: assignmentData.status,
+       opened_at: assignmentData.opened_at,
+       baseline_submitted_at:
+       assignmentData.baseline_submitted_at,
+       ai_unlocked_at:
+       assignmentData.ai_unlocked_at,
+       final_submitted_at:
+       assignmentData.final_submitted_at,
+       };
 
     if (
       assignment.final_submitted_at ||
