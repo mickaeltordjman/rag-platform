@@ -53,6 +53,43 @@ export default function CasePage({
       setSession(ensureSession(caseId));
     }, 0);
 
+    async function recordCaseOpened() {
+      try {
+        const response = await fetch(
+          "/api/events/case-opened",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              assignmentId: TEST_ASSIGNMENT_ID,
+              caseId,
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          const payload = (await response.json()) as {
+            error?: string;
+          };
+
+          console.error(
+            "Unable to record case opening:",
+            payload.error ??
+              "Unknown case-opened error.",
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Unable to record case opening:",
+          error,
+        );
+      }
+    }
+
+    void recordCaseOpened();
+
     return () => {
       window.clearTimeout(timer);
     };
@@ -119,8 +156,6 @@ export default function CasePage({
           ? error.message
           : "Unable to save the diagnostic response.",
       );
-
-      throw error;
     } finally {
       setSavingPhase(null);
     }
@@ -245,9 +280,9 @@ export default function CasePage({
               </div>
             ) : (
               <ChatPanel
-               session={session}
-               assignmentId={TEST_ASSIGNMENT_ID}
-               onChange={setSession}
+                session={session}
+                assignmentId={TEST_ASSIGNMENT_ID}
+                onChange={setSession}
               />
             )}
           </div>
