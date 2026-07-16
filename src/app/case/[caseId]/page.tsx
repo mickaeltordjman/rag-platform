@@ -8,6 +8,10 @@ import { ensureSession, submitAnswer } from "@/lib/storage";
 import { DiagnosticForm } from "@/components/DiagnosticForm";
 import { ChatPanel } from "@/components/ChatPanel";
 
+const TEST_ASSIGNMENT_ID =
+  "26560c1d-dd74-4821-bcac-828dc156b2f7";
+
+
 export default function CasePage({ params }: { params: Promise<{ caseId: string }> }) {
   const { caseId } = use(params);
   const router = useRouter();
