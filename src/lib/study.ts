@@ -66,6 +66,21 @@ export const CASES = [
       ["Available data", "No final diagnosis is shown to the reader. Use the clinical information and any provided images to formulate the differential."],
     ],
   },
+    {
+    id: "RAD-001",
+    specialty: "Radiology",
+    title: "RAD-001",
+    sections: [
+      [
+        "Presentation",
+        "Replace this with the actual clinical presentation for RAD-001.",
+      ],
+      [
+        "Imaging",
+        "Review all available image sequences before submitting your diagnosis.",
+      ],
+    ],
+  },
 ];
 
 export function deterministicArm(readerId: string, caseId: string): InterventionArm {
