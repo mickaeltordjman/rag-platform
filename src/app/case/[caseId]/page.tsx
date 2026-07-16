@@ -1,5 +1,6 @@
 "use client";
 
+import JpegCaseViewer from "@/components/JpegCaseViewer";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CASES, type CaseSession, type DiagnosticAnswer } from "@/lib/study";
@@ -27,7 +28,7 @@ export default function CasePage({ params }: { params: Promise<{ caseId: string 
       <div className="mx-auto grid max-w-7xl gap-6 px-6 py-6 lg:grid-cols-2">
         <section className="panel"><div className="mb-5 flex items-center justify-between"><div><h2 className="text-2xl font-bold">Case information</h2><p className="mt-1 text-sm text-slate-300">Complete the unaided assessment before accessing AI.</p></div><span className="badge">{studyCase.specialty}</span></div>
           <div className="grid gap-4">{studyCase.sections.map(([heading, text]) => <div key={heading} className="rounded-2xl border border-white/10 bg-slate-900 p-5"><h3 className="font-semibold text-cyan-200">{heading}</h3><p className="mt-2 text-sm leading-6 text-slate-200">{text}</p></div>)}
-            <div className="rounded-2xl border border-dashed border-cyan-400/30 bg-cyan-400/5 p-6"><h3 className="font-semibold text-cyan-200">Image / DICOM viewer integration point</h3><div className="mt-4 flex h-56 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-center text-sm text-slate-400">Embed the Discovery viewer here using its approved URL/token contract.</div></div>
+            <JpegCaseViewer caseCode={caseId} />
           </div>
         </section>
         <section className="panel"><h2 className="text-2xl font-bold">Diagnostic workflow</h2><p className="mt-1 text-sm text-slate-300">Baseline responses are locked before the randomized AI condition is revealed.</p>
