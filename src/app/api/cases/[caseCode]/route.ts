@@ -61,32 +61,13 @@ export async function GET(
         (a, b) =>
           (a.order ?? Number.MAX_SAFE_INTEGER) -
           (b.order ?? Number.MAX_SAFE_INTEGER),
-      );
-
-    const allPaths = sequences.flatMap(
-      (sequence) => sequence.images,
-    );
-
-    const { data: signedFiles, error: signingError } =
-      await supabaseAdmin.storage
-        .from("case-images")
-        .createSignedUrls(allPaths, 60 * 60);
-
-    if (signingError || !signedFiles) {
-      console.error(signingError);
-
-      return NextResponse.json(
-        { error: "Unable to load case images." },
-        { status: 500 },
-      );
-    }
-
-    const signedUrlByPath = new Map(
-      signedFiles.map((file, index) => [
-        allPaths[index],
-        file.signedUrl,
-      ]),
-    );
+      )
+      .map((sequence) => ({
+        id: sequence.id,
+        name: sequence.name,
+        order: sequence.order ?? null,
+        imageCount: sequence.images.length,
+      }));
 
     return NextResponse.json({
       id: studyCase.id,
@@ -95,15 +76,7 @@ export async function GET(
       title: studyCase.title,
       clinicalText: studyCase.clinical_text,
       sequencePosition: studyCase.sequence_position,
-      sequences: sequences.map((sequence) => ({
-        id: sequence.id,
-        name: sequence.name,
-        order: sequence.order ?? null,
-        images: sequence.images.map((path) => ({
-          path,
-          signedUrl: signedUrlByPath.get(path) ?? "",
-        })),
-      })),
+      sequences,
     });
   } catch (error) {
     console.error(error);
