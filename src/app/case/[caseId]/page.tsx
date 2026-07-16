@@ -245,8 +245,9 @@ export default function CasePage({
               </div>
             ) : (
               <ChatPanel
-                session={session}
-                onChange={setSession}
+               session={session}
+               assignmentId={TEST_ASSIGNMENT_ID}
+               onChange={setSession}
               />
             )}
           </div>
